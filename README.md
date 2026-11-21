@@ -17,10 +17,8 @@ Kaggle score = (image accuracy + sentiment accuracy) / 2.
 | Random forest | 0.170 (0.262 on Fisher features) | 0.598 (0.671 on Fisher features) |
 | Neural network (PyTorch MLP) | 0.452 (0.442 on square-root features) | **0.683** |
 | Local-mean k-NN | 0.591 | 0.588 |
-| **Final: 0.7 local-mean k-NN + 0.3 MLP, square-root features** | **0.626** | — |
 
-Final submission: image = blend above, sentiment = MLP. Validation estimate ≈ 0.654; the
-submitted models are retrained on all labelled rows.
+Final submission: image = blend above, sentiment = MLP.
 
 ## Project structure
 ```
