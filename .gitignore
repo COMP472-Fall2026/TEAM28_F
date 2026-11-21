@@ -1,0 +1,23 @@
+# Kaggle data: don't commit (large, and competition data shouldn't be redistributed)
+data/*.csv
+
+# Generated outputs, recreated by the scripts (splits/ and outputs/boost_histories/ ARE
+# committed: the final submission script needs the histories)
+results/results.csv
+outputs/preds/*
+outputs/submissions/*
+!outputs/**/.gitkeep
+# Report material, kept local (recreated by the experiment scripts)
+outputs/figures/
+outputs/mlp/
+outputs/*.md
+outputs/clustering_results.csv
+
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+.DS_Store
+
+# Local scratch: old versions and files not part of the project
+temp/

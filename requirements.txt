@@ -1,0 +1,5 @@
+numpy>=1.26
+pandas>=2.0
+matplotlib>=3.8
+scikit-learn>=1.3   # ONLY for train_test_split and metrics. Never for the required algorithms.
+torch>=2.2
