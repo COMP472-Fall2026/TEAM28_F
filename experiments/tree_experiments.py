@@ -18,6 +18,8 @@ from src.common import get_split, log_result, save_predictions, set_seed
 from src.common.config import SEED
 from src.models import DecisionTree, RandomForest
 
+# Depth 5 -> 25 shows underfitting turning into overfitting; then one change at a time from
+# depth 20: bigger min split, smaller min leaf, and entropy instead of gini.
 TREE_CONFIGS = [  # (max_depth, min_samples_split, min_samples_leaf, criterion)
     (5, 10, 5, "gini"), (10, 10, 5, "gini"), (15, 10, 5, "gini"), (20, 10, 5, "gini"),
     (25, 10, 5, "gini"), (20, 20, 5, "gini"), (20, 10, 2, "gini"), (20, 10, 5, "entropy"),
@@ -70,6 +72,8 @@ def run_trees(task, X_tr, y_tr, X_val, y_val, author):
 
 
 def run_forest(task, X_tr, y_tr, X_val, y_val, author, fisher):
+    # Forest trees can be deep (averaging removes most of their overfitting). Image uses fewer
+    # trees (25) because a 50-class tree is much slower to grow than a 3-class one.
     depth = 20 if task == "image" else 15
     configs = [("raw", depth, 5, "sqrt", 25 if task == "image" else 50)]
     if fisher:

@@ -42,7 +42,9 @@ class RandomForest(BaseClassifier):
     def fit(self, X, y):
         n_samples, n_features = X.shape
 
-        # Determine how many features each split examines
+        # Determine how many features each split examines. sqrt(n_features) is the usual choice
+        # for classification: different trees look at different features, so their errors differ
+        # and averaging them cancels out more of the noise than averaging near-identical trees.
         if self.max_features == "sqrt":
             n_selected_features = max(
                 1, int(np.sqrt(n_features))
@@ -59,7 +61,8 @@ class RandomForest(BaseClassifier):
 
         for i in range(self.n_estimators):
 
-            # Bootstrap sample: draw with replacement
+            # Bootstrap sample: draw n rows with replacement, so each tree sees a slightly
+            # different dataset (about 63% unique rows); this is the second source of variety
             sample_indices = rng.choice(
                 n_samples,
                 size=n_samples,
@@ -75,7 +78,7 @@ class RandomForest(BaseClassifier):
                 min_samples_split=self.min_samples_split,
                 min_samples_leaf=self.min_samples_leaf,
                 max_features=n_selected_features,
-                random_state=self.random_state + i,
+                random_state=self.random_state + i,  # own seed per tree: different feature draws, still reproducible
                 criterion=self.criterion
             )
 
@@ -92,7 +95,11 @@ class RandomForest(BaseClassifier):
         return self.classes_[scores.argmax(axis=1)]
 
     def predict_proba(self, X):
-        """Average hard votes or leaf class probabilities in classes_ order."""
+        """Average hard votes or leaf class probabilities in classes_ order.
+
+        Hard voting counts each tree's predicted class; soft voting averages the trees' leaf
+        class shares, which keeps how confident each tree was (both are compared in the
+        experiments)."""
         if not self.trees:
             raise ValueError("Train the forest before predicting.")
 
@@ -100,6 +107,7 @@ class RandomForest(BaseClassifier):
         rows = np.arange(len(X))
         for tree in self.trees:
             if self.voting == "soft":
+                # a tree's bootstrap sample may miss a class: map its columns to the forest's
                 columns = np.searchsorted(self.classes_, tree.classes_)
                 scores[:, columns] += tree.predict_proba(X)
             else:

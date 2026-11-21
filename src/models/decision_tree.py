@@ -9,7 +9,10 @@ from .base import BaseClassifier
 
 
 def impurity(counts, n, criterion):
-    """Gini or entropy for each row of class counts; n holds the row totals."""
+    """Gini or entropy for each row of class counts; n holds the row totals.
+
+    Both are 0 for a pure node and largest when classes are evenly mixed. Gini is the usual
+    default; entropy is tested as the alternative splitting criterion the spec asks for."""
     p = counts / n[:, None]
     if criterion == "gini":
         return 1 - np.sum(p ** 2, axis=1)
@@ -46,9 +49,12 @@ def find_best_split(X, y, min_samples_leaf=1, max_features=None, rng=None, crite
         if not np.any(valid):
             continue
 
+        # Running totals of the sorted one-hot labels = class counts left of every cut at once,
+        # so each feature costs one sort + one cumsum instead of a loop over thresholds.
         left_counts = np.cumsum(onehot[order], axis=0)[:-1][valid]   # class counts left of cut
         right_counts = total - left_counts
         nl, nr = n_left[valid], n_right[valid]
+        # weighted by child size, so a tiny pure child can't win on its own
         impurities = (nl * impurity(left_counts, nl, criterion)
                       + nr * impurity(right_counts, nr, criterion)) / n_samples
 
@@ -60,6 +66,8 @@ def find_best_split(X, y, min_samples_leaf=1, max_features=None, rng=None, crite
             split_pos = nl[idx]
             lower = float(values[split_pos - 1])
             upper = float(values[split_pos])
+            # threshold halfway between the two neighbouring values: unseen values in that gap
+            # are split evenly instead of all falling on one side
             midpoint = lower / 2 + upper / 2
             best_threshold = midpoint if midpoint < upper else lower
 
@@ -70,6 +78,9 @@ class DecisionTree(BaseClassifier):
     PARAMS = ("max_depth", "min_samples_split", "min_samples_leaf", "max_features",
               "criterion", "random_state")
 
+    # max_depth / min_samples_split / min_samples_leaf limit how far the tree can grow:
+    # deeper trees fit the training data better but overfit (see the depth sweep).
+    # max_features=None checks every feature; Random Forest passes a smaller number.
     def __init__(
         self,
         max_depth=10,
@@ -107,6 +118,7 @@ class DecisionTree(BaseClassifier):
             self.random_state
         )
 
+        # labels are re-coded to 0..c-1 so a bootstrap sample missing a class still works
         self.classes_, encoded = np.unique(y, return_inverse=True)
         self.root = self._grow_tree(X, encoded, depth=0)
 
@@ -120,12 +132,15 @@ class DecisionTree(BaseClassifier):
 
         n_samples = len(y)
         counts = np.bincount(y, minlength=len(self.classes_))
+        # every node is a possible leaf: majority class + class shares (used by predict_proba
+        # and by the forest's soft voting)
         leaf = {
             "class": int(self.classes_[counts.argmax()]),
             "probabilities": counts / n_samples,
         }
 
-        # Stopping conditions
+        # Stopping conditions: depth limit, too few samples to split, already pure, or no
+        # split could give both children min_samples_leaf samples
         if (
             (
                 self.max_depth is not None
@@ -154,7 +169,7 @@ class DecisionTree(BaseClassifier):
             probabilities = leaf["probabilities"][counts != 0]
             parent_impurity = -np.sum(probabilities * np.log2(probabilities))
 
-        # Stop if no useful split exists
+        # Stop if no split lowers the impurity (splitting further would only add noise)
         if (
             feature is None
             or split_impurity >= parent_impurity - 1e-12
@@ -179,7 +194,7 @@ class DecisionTree(BaseClassifier):
             depth + 1
         )
 
-        # Return decision node
+        # Return decision node (plain dicts keep the tree easy to print and inspect)
         return {
             "feature": feature,
             "threshold": threshold,

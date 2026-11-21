@@ -35,6 +35,8 @@ from src.common.evaluate import per_class_accuracy, plot_confusion
 from src.common.split import get_val_ids
 from src.models.knn import KNN
 
+# raw vs standardized: does putting every feature on the same scale help distances?
+# euclidean vs cosine: does vector length matter, or only direction?
 PREPS = ["raw", "standardized"]
 METRICS = ["euclidean", "cosine"]
 
@@ -213,6 +215,8 @@ def run_task(task, ks, author, train_subsample, make_test):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", nargs="+", default=list(TASKS))
+    # roughly doubling k covers "memorize" (k=1) to "very smooth" (k=200) cheaply; 100 and 200
+    # were added because sentiment was still improving at k=50
     ap.add_argument("--ks", nargs="+", type=int, default=[1, 3, 5, 10, 20, 50, 100, 200])
     ap.add_argument("--author", default="")
     ap.add_argument("--train-subsample", type=int, default=2000)

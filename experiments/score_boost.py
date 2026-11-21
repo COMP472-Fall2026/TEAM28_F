@@ -82,7 +82,10 @@ def run(task, seeds, only=None):
             p = knn.proba_from_neighbors(idx, d, k, weighted=True)
             results[f"knn_k{k}"] = record(f"knn_k{k}", task, {"k": k, "weighted": True}, yv, p,
                                           notes=notes)
+        # small m for images (1-NN works best there), large m for sentiment (k=50-100 works best)
         for m in (2, 3, 5) if task == "image" else (25, 50):
+            # temp=0.02 turns the small similarity gaps into usable probabilities for blending;
+            # it doesn't change which class wins
             p = softmax(local_mean_scores(S, y, n_classes, m), temp=0.02)
             results[f"lmknn_m{m}"] = record(f"lmknn_m{m}", task, {"m": m}, yv, p, notes=notes)
 
@@ -90,6 +93,7 @@ def run(task, seeds, only=None):
     sc2 = Standardizer().fit(A)
     A2, B2 = sc2.transform(A).astype(np.float32), sc2.transform(B).astype(np.float32)
     configs = {
+        # linear = no hidden layer: shows how much the hidden layer actually adds
         "linear": dict(name="linear", hidden_sizes=[], dropout=0.0, input_dropout=0.2,
                        weight_decay=1e-3, learning_rate=1e-3, num_classes=n_classes),
         "mlp1024": dict(name="mlp1024", hidden_sizes=[1024], dropout=0.5, input_dropout=0.2,

@@ -30,7 +30,10 @@ from src.common import PCA, Standardizer, Timer, get_full_train, l2_normalize, s
 from src.common.config import FIGURES_DIR, SEED, TASKS
 from src.models.kmeans import KMeans, class_cooccurrence, contingency_table, purity
 
+# k-Means uses euclidean distance, so feature scaling changes which points look close;
+# l2 (unit length) makes it compare directions, like cosine k-NN
 PREPS = ["raw", "standardized", "l2"]
+# k around the true number of classes (3 / 50), to see if any k matches the labels better
 K_SWEEP = {"sentiment": [2, 3, 4, 5, 6, 8, 10], "image": [10, 25, 50, 75, 100]}
 
 
@@ -50,6 +53,8 @@ def score(y, labels):
 def run_task(task, n_init, csv_rows, max_iter):
     meta = TASKS[task]
     names, n_classes = meta["class_names"], meta["n_classes"]
+    # unsupervised, so nothing is tuned on validation: fit on all labelled rows and use the
+    # labels only afterwards, to score the clusters
     X_all, y = get_full_train(task)
     md = [f"## {task.capitalize()} ({n_classes} true classes, {len(y)} points)\n"]
 
@@ -69,6 +74,7 @@ def run_task(task, n_init, csv_rows, max_iter):
         csv_rows.append(row)
         print(f"[cluster] {task} {prep:<12} k={n_classes} purity={s['purity']:.3f} "
               f"ARI={s['ARI']:.3f} NMI={s['NMI']:.3f}")
+    # NMI picks the best preprocessing: unlike purity it doesn't reward using more clusters
     best_prep = max(main_rows, key=lambda r: r["NMI"])["preprocessing"]
     X, km = fits[best_prep]
     md += [f"### k = {n_classes} (the true number of classes), by preprocessing\n",
@@ -218,6 +224,7 @@ def _sweep_plot(rows, task, prep, n_classes):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", nargs="+", default=list(TASKS))
+    # 3 restarts: enough to avoid a bad local minimum while keeping the run to ~5 minutes
     ap.add_argument("--n-init", type=int, default=3)
     ap.add_argument("--max-iter", type=int, default=200)
     args = ap.parse_args()

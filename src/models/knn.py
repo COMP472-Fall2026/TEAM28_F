@@ -22,7 +22,7 @@ def local_mean_scores(S, y_tr, n_classes, m):
     S is the (queries x training) cosine-similarity matrix."""
     scores = np.empty((len(S), n_classes), dtype=np.float32)
     for c in range(n_classes):
-        Sc = S[:, y_tr == c]
+        Sc = S[:, y_tr == c]   # similarities to this class's training points only
         scores[:, c] = np.partition(Sc, -m, axis=1)[:, -m:].mean(axis=1)
     return scores
 
@@ -50,7 +50,9 @@ class KNN(BaseClassifier):
 
     # ------------------------------------------------------------------ training
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """Memorize the training set (plus precomputed quantities that speed up predict)."""
+        """Memorize the training set (plus precomputed quantities that speed up predict).
+
+        k-NN has no training step: all the work happens at prediction time."""
         X = np.asarray(X, dtype=np.float32)
         self.y_ = np.asarray(y, dtype=np.int64)
         self.n_classes_ = int(self.y_.max()) + 1
@@ -97,8 +99,11 @@ class KNN(BaseClassifier):
         """(n_queries, n_classes) vote totals using the first k neighbours."""
         idx, dist = idx[:, :k], dist[:, :k]
         labels = self.y_[idx]                                  # (n, k) neighbour labels
+        # weighted: a closer neighbour counts more (1/d); 1e-8 avoids dividing by zero
         w = 1.0 / (dist + 1e-8) if weighted else np.ones_like(dist, dtype=np.float64)
         if tiebreak:
+            # Tiny bonus that shrinks with rank: far too small to beat a real vote, so it only
+            # decides exact ties, in favour of the class whose neighbours are closer.
             ranks = np.arange(k)[None, :]
             w = w + 1e-6 * (k - ranks)                         # nearer neighbour → bigger bonus
         votes = np.zeros((len(idx), self.n_classes_), dtype=np.float64)

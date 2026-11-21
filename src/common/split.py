@@ -26,6 +26,8 @@ def make_split(task: str, val_size: float = VAL_SIZE, seed: int = SEED, overwrit
         return path
     _, _, y = load_train(task)
     idx = np.arange(len(y))
+    # stratify=y keeps every class's share the same in train and val (e.g. 320/80 per image
+    # class), so validation accuracy isn't skewed by an unlucky class mix
     train_idx, val_idx = train_test_split(
         idx, test_size=val_size, random_state=seed, stratify=y
     )

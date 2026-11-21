@@ -19,13 +19,15 @@ from src.models.knn import local_mean_scores, softmax
 from src.common import (Standardizer, build_submission, get_full_train, get_split, load_test,
                         log_result, save_predictions, set_seed)
 
-SEEDS = [42, 123, 2026]
+SEEDS = [42, 123, 2026]   # same 3 seeds as on validation; their predictions are averaged
 IMAGE_MLP = dict(name="mlp1024", hidden_sizes=[1024], dropout=0.5, input_dropout=0.2,
                  weight_decay=1e-3, learning_rate=1e-3, num_classes=50)
 SENT_MLP = dict(M.SENTIMENT_CONFIG)
 W_KNN = 0.7  # image blend weight, chosen on validation: python experiments/score_boost.py --blend
 
 
+# When refitting on all rows there is no validation set left for early stopping, so each seed
+# trains for the epoch count early stopping picked for it on validation.
 def best_epoch(name, task, seed):
     h = pd.read_csv(HIST / f"{name}_{task}_{seed}.csv")
     return int(h.loc[h.val_accuracy.idxmax(), "epoch"])
@@ -45,6 +47,7 @@ def mlp_proba(name, task, config, A, y, B):
 
 def image_proba(X_fit, y_fit, X_pred):
     A, B = hellinger(X_fit), hellinger(X_pred)
+    # local-mean k-NN, m=2: best image model on validation (0.591 vs 0.572 for plain 1-NN)
     p_knn = softmax(local_mean_scores(B @ A.T, y_fit, 50, m=2), temp=0.02)
     return W_KNN * p_knn + (1 - W_KNN) * mlp_proba("mlp1024", "image", IMAGE_MLP, A, y_fit, B)
 
@@ -60,11 +63,14 @@ def main():
         X_tr, y_tr, X_val, y_val = get_split(task)
         val_acc = float(np.mean(fn(X_tr, y_tr, X_val).argmax(1) == y_val))
         print(f"[final] {task} pipeline on train/val split: val {val_acc:.4f} (expected ~{expected})")
+        # safety check: the exact code that builds the submission must reproduce the score it
+        # was chosen on, before its test predictions are trusted
         assert abs(val_acc - expected) < 0.01, "pipeline does not reproduce the validation score"
         log_result(f"final_{task}", task, {"seeds": SEEDS, "w_knn": W_KNN if task == "image" else None},
                    val_acc=val_acc, author="Ashwin",
                    notes="fixed-epoch refit check on train split; test model is refit on train+val")
 
+        # final models use train + val: 25% more data, and k-NN was still improving with more data
         X_all, y_all = get_full_train(task)
         _, X_test = load_test(task)
         p_test = fn(X_all, y_all, X_test)

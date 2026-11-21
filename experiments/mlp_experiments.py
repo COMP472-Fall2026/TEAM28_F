@@ -23,10 +23,10 @@ from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = 42
-SEEDS = [42, 123, 2026]
-BATCH_SIZE = 128
+SEEDS = [42, 123, 2026]   # results are averaged over 3 starts, so one lucky start doesn't decide
+BATCH_SIZE = 128          # common default: stable gradients, fast on CPU
 MAX_EPOCHS = 50
-PATIENCE = 8
+PATIENCE = 8              # early stopping: stop after 8 epochs without validation improvement
 SPECS = {"image": (20000, 500, 50), "sentiment": (12000, 768, 3)}
 IMAGE_CONFIGS = [
     dict(name="256_64", hidden_sizes=[256, 64], dropout=0.0,
@@ -35,6 +35,8 @@ IMAGE_CONFIGS = [
     dict(name="1024_reg", hidden_sizes=[1024], dropout=0.5, input_dropout=0.2,
          weight_decay=0.001, learning_rate=0.001, num_classes=50),
 ]
+# Sentiment: a small net (64 units) with strong weight decay. The BERT features are almost
+# linearly separable (a linear model already gets ~0.67), so a bigger net only overfits.
 SENTIMENT_CONFIG = dict(
     name="sentiment", hidden_sizes=[64], dropout=0.3,
     weight_decay=0.01, learning_rate=0.0003, num_classes=3,
@@ -141,6 +143,8 @@ def fit(X, y, config, seed, history_path, validation=None, epochs=None,
     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"],
                                  weight_decay=config["weight_decay"])
     batches = loader(X, y, seed)
+    # keep the weights from the best validation epoch and restore them at the end, so later
+    # overfitting epochs don't count
     best_accuracy, best_epoch, stale, best_state = -1.0, 0, 0, None
     history = []
     limit = MAX_EPOCHS if validation is not None else epochs
@@ -228,6 +232,8 @@ def image_validation(args, results):
 
 def sentiment_validation(args, results):
     X, y, ids = load_data(args.data_dir, "sentiment")
+    # Nested cross-validation: the epoch count is chosen on an inner split and accuracy is
+    # measured on the outer fold the model never saw, for two weight-decay strengths.
     weights = [0.001, 0.01]
     oof = {wd: np.full((len(y), 3), np.nan, dtype=np.float32) for wd in weights}
     folds = np.zeros(len(y), dtype=int)

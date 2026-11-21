@@ -13,8 +13,8 @@ PREDS_DIR = ROOT / "outputs" / "preds"
 SUBMISSIONS_DIR = ROOT / "outputs" / "submissions"
 FIGURES_DIR = ROOT / "outputs" / "figures"
 
-SEED = 42
-VAL_SIZE = 0.2
+SEED = 42        # one seed everywhere, so every run can be reproduced
+VAL_SIZE = 0.2   # 20% of labelled rows held out for validation (16k/4k image, 9.6k/2.4k sentiment)
 
 TASKS = {
     "image": {

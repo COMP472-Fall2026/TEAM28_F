@@ -24,6 +24,8 @@ def build_submission(image_preds, sentiment_preds, name: str = "submission") -> 
     ], ignore_index=True)
 
     sample = load_sample_submission()
+    # match predictions to ids by merging, never by row position: the sample file mixes image
+    # and text rows in its own order
     sub = sample[["id"]].merge(preds, on="id", how="left", validate="one_to_one")
 
     # Same checks as the official example, plus a couple more.
