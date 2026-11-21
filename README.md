@@ -1,7 +1,5 @@
-# COMP 472 Project (Fall 2026): Image + Sentiment Classification
+# COMP 472 Project: Image and Sentiment Classification
 
-Team project for the Kaggle competition `comp-472-project-fall-2026-concordia`: classify
-pre-extracted feature vectors for two tasks.
 
 | Task | Classes | Features | Train | Test |
 |---|---|---|---|---|
@@ -14,11 +12,11 @@ Kaggle score = (image accuracy + sentiment accuracy) / 2.
 
 | Model | Image | Sentiment |
 |---|---|---|
-| k-NN (cosine, from scratch) | 0.534 (0.572 with square-root features) | 0.584 |
-| Decision tree (from scratch) | 0.113 | 0.483 |
-| Random forest (from scratch) | 0.170 (0.262 on Fisher features) | 0.598 (0.671 on Fisher features) |
+| k-NN (cosine) | 0.534 (0.572 with square-root features) | 0.584 |
+| Decision tree | 0.113 | 0.483 |
+| Random forest | 0.170 (0.262 on Fisher features) | 0.598 (0.671 on Fisher features) |
 | Neural network (PyTorch MLP) | 0.452 (0.442 on square-root features) | **0.683** |
-| Local-mean k-NN (from scratch) | 0.591 | 0.588 |
+| Local-mean k-NN | 0.591 | 0.588 |
 | **Final: 0.7 local-mean k-NN + 0.3 MLP, square-root features** | **0.626** | — |
 
 Final submission: image = blend above, sentiment = MLP. Validation estimate ≈ 0.654; the
@@ -28,11 +26,11 @@ submitted models are retrained on all labelled rows.
 ```
 src/common/        shared code: data loading, the one validation split, preprocessing,
                    metrics, result logging, submission builder
-src/models/        from-scratch models: knn.py, decision_tree.py, random_forest.py, kmeans.py
-experiments/       one script per study (see below), including the neural network
+src/models/        models: knn.py, decision_tree.py, random_forest.py, kmeans.py
+experiments/       
 scripts/           setup: check_setup.py, make_splits.py
-splits/            saved train/validation indices, so every model uses the same split
-results/           results.csv is written here when experiments run (kept local, not uploaded)
+splits/            saved train/validation indices, every model uses the same split
+results/           
 outputs/           boost_histories/: MLP training curves the final submission needs. Figures,
                    summaries and MLP tables are written here when experiments run.
 ```
@@ -49,7 +47,7 @@ python scripts/check_setup.py     # verifies files and shapes
 python scripts/make_splits.py     # creates the shared train/val split (already in splits/)
 ```
 
-## Experiments (run from the repo root)
+## Experiments
 ```bash
 python experiments/knn_experiments.py          # k-NN: preprocessing, distance, k sweep
 python experiments/tree_experiments.py         # Decision Tree + Random Forest
@@ -61,8 +59,3 @@ python experiments/score_boost.py --blend      # blend-weight table (how 0.7 was
 python experiments/make_final_submission.py    # final Kaggle submission
 ```
 Every run is logged to `results/results.csv`; plots go to `outputs/figures/`.
-
-## Rules in one breath
-k-NN, Decision Tree, Random Forest and clustering are implemented **from scratch** (NumPy). The
-neural net uses PyTorch. sklearn is only used for splitting and metrics. Only the provided
-features are used. Models are tuned on our validation split, never on the leaderboard.
