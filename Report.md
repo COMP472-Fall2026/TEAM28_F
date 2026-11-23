@@ -90,12 +90,12 @@ The number of candidate features is the integer part of the square root of the i
 
 Hard and soft voting are compared using exactly the same trained trees, isolating the effect of prediction aggregation.
 
-Additional experiments use regularized Fisher projections fitted on training data only. These forests contain 50 trees; the configurations include depth 18 with a minimum leaf size of 5, and a sentiment variant with depth 5 and a minimum leaf size of 10.
+Additional experiments use regularized Fisher projections fitted on the training fold. Each run trains 50 trees and evaluates the first 10, 25, and 50 trees. The configurations include depth 18 with a minimum leaf size of 5 and a sentiment variant with depth 5 and a minimum leaf size of 10.
 
 Random Forest training does not use epochs or a learning rate. Each constituent tree is fitted using greedy Gini impurity reduction.
 
 
-## Multi-Layer Perceprton
+## Multi-Layer Perceptron
 
 ### Architecture and Implementation
 
@@ -134,7 +134,7 @@ During epoch selection, training stops after eight consecutive epochs without an
 Image experiments train each architecture with seeds 42, 123, and 2026. Ensemble predictions are obtained by averaging the networks' class probabilities.
 
 
-## Local-mean k-NN
+## K-Means Clustering
 
 ### Architecture and Implementation
 
@@ -205,13 +205,13 @@ Standard cosine k-NN achieved 53.4%. Applying square-root features increased its
 
 The Decision Tree and raw-feature Random Forest achieved lower accuracies of 11.3% and 17.0%, respectively. A possible explanation is that individual axis-aligned splits capture the useful relationships in these feature vectors less effectively than similarity-based methods.
 
-Fisher features increased Random Forest accuracy to 26.2%. This demonstrates the importance of the representation, although this configuration remained below the strongest k-NN and MLP results.
+The best Fisher-based Random Forest reached 26.2% with 50 trees, depth 18, and soft voting. It remained below the strongest k-NN and MLP results.
 
 #### Sentiment Classification
 
 The MLP achieved the highest reported sentiment accuracy at 68.3%. Its hidden layer can learn combinations of the provided embedding dimensions that help distinguish the three sentiment classes.
 
-The Random Forest improved from 59.8% on raw features to 67.1% on Fisher features, a gain of 7.3 percentage points. The resulting representation therefore made the sentiment classes easier to separate with the tested forest.
+The best raw-feature Random Forest scored 59.8%, while the best Fisher-based configuration reached 67.1% with 10 trees, depth 5, and soft voting. On the 2,400-example validation set, this Fisher forest correctly identified 434 of 800 neutral examples (54.25% recall). It predicted negative for 210 of those neutral examples and positive for 156.
 
 The Decision Tree achieved 48.3%, compared with 59.8% for the raw-feature Random Forest. This is consistent with the benefit of combining multiple randomized trees, although the configurations also differ in their training settings.
 
@@ -266,21 +266,25 @@ For image k-NN, square-root features improved accuracy from 53.4% to 57.2%. In c
 
 This comparison shows that a transformation that improves distance-based neighbourhoods does not necessarily improve a neural network by the same amount.
 
-Fisher projections improved the reported Random Forest results for both tasks:
+The best tested Fisher-based Random Forest configurations scored higher than the best raw-feature configurations on both tasks.
 
 | Task | Raw features | Fisher features | Difference |
 |---|---:|---:|---:|
 | Images | 17.0% | 26.2% | +9.2 percentage points |
 | Sentiments | 59.8% | 67.1% | +7.3 percentage points |
 
-These projections use training labels to construct a more discriminative representation. They were fitted without using validation labels.
+Fisher projection uses training labels to learn feature directions that separate classes. The fitted projection is then applied to the validation features. Forest hyperparameters also changed between the raw and projected runs, so the differences in the table measure the effect of the full configurations.
 
-### 6. Summary of Findings
+### 6. Clustering Results
+
+On the L2-normalized sentiment features, k-means with three clusters achieved 38.76% purity, an adjusted Rand index of 0.0143, and normalized mutual information of 0.0143. The low agreement scores indicate that these clusters aligned only weakly with the three sentiment labels.
+
+### 7. Summary of Findings
 
 The experiments show that model selection must consider both the classification algorithm and the feature representation.
 
 For images, similarity-based methods performed particularly well, and the final local-mean k-NN–MLP blend achieved the highest reported validation accuracy of 62.6%.
 
-For sentiments, the MLP achieved the highest reported accuracy at 68.3%, while Fisher projections substantially improved Random Forest performance.
+For sentiment, the three-seed MLP ensemble achieved the highest reported accuracy at 68.3%, while the best Fisher-based Random Forest reached 67.1%. The final submission used a 70% local-mean k-NN and 30% MLP blend for images and the three-seed MLP ensemble for sentiment. We refit the selected models on all labeled examples before predicting the test labels. The combined validation estimate was about 65.4%, and the public Kaggle score was 65.3%.
 
 The main findings are that preprocessing can strongly affect results, greater model complexity does not automatically improve generalization, and combining models with complementary predictions can outperform the strongest individual component.
