@@ -196,6 +196,7 @@ The following table summarizes the holdout validation accuracies reported in our
 | MLP | 45.2% (44.2% on square-root features) | 68.3% |
 | Local-mean k-NN | 59.1% | 58.8% |
 
+Neutral was the hardest sentiment class for k-NN (46.0% recall, compared with 69.3% for Negative and 60.0% for Positive), and its most frequent error was being predicted as Negative. For images, the most confused pairs were similar objects, such as 39 → 38 and 37 → 38.
 
 #### Image Classification
 
@@ -247,11 +248,11 @@ We compared two image MLP architectures using the same validation split and stan
 
 | Configuration | Hidden layers | Regularization | Ensemble validation accuracy |
 |---|---|---|---:|
-| Baseline | 256 → 64 | None | 37.625% |
-| Wider regularized network | 1,024 | Input dropout 0.2, hidden dropout 0.5, weight decay 0.001 | 45.050% |
-| Combined ensemble | All six networks | As above | 43.075% |
+| Baseline | 256 → 64 | None | 37.650% |
+| Wider regularized network | 1,024 | Input dropout 0.2, hidden dropout 0.5, weight decay 0.001 | 45.225% |
+| Combined ensemble | All six networks | As above | 43.325% |
 
-The wider regularized ensemble improved validation accuracy by **7.425 percentage points** over the baseline. Its individual networks also performed better across all three seeds, reaching 41.875–42.750%, compared with 33.425–33.775% for the baseline.
+The wider regularized ensemble improved validation accuracy by **7.575 percentage points** over the baseline. Its individual networks also performed better across all three seeds, reaching 41.875–42.750%, compared with 33.425–33.775% for the baseline.
 
 Both configurations showed overfitting. The baseline networks eventually reached 100% training accuracy while validation accuracy remained around 33–34%. The available histories for the wider networks also showed training accuracy near 100%, but higher validation accuracy, indicating better generalization without eliminating overfitting.
 
@@ -277,13 +278,22 @@ Fisher projection uses training labels to learn feature directions that separate
 
 ### 6. Clustering Results
 
-On the L2-normalized sentiment features, k-means with three clusters achieved 38.76% purity, an adjusted Rand index of 0.0143, and normalized mutual information of 0.0143. The low agreement scores indicate that these clusters aligned only weakly with the three sentiment labels.
+We ran k-Means on both datasets with k equal to the true number of classes (50 for images, 3 for sentiments), using the labels only afterwards to score the clusters. Standardized features gave the best agreement on both tasks.
+
+| Task | Purity | ARI | NMI |
+|---|---:|---:|---:|
+| Images (k = 50) | 11.54% (chance ≈ 2%) | 0.029 | 0.133 |
+| Sentiments (k = 3) | 42.31% (chance ≈ 33%) | 0.020 | 0.019 |
+
+The clusters aligned only weakly with the true labels, so the classes do not form natural groups in the provided features. For sentiments, no cluster was dominated by one label, and Neutral examples were spread across all three clusters, which matches Neutral being the hardest class for our supervised models. For images, classes that were often grouped together, such as 12 and 25, were also among k-NN's most confused pairs. Varying k showed no clear elbow. These results show that supervised learning is needed: local-mean k-NN reached 59.1% on images, compared with 11.5% purity for k-Means.
 
 ### 7. Summary of Findings
 
 The experiments show that model selection must consider both the classification algorithm and the feature representation.
 
 For images, similarity-based methods performed particularly well, and the final local-mean k-NN–MLP blend achieved the highest reported validation accuracy of 62.6%.
+
+The blend weight was selected on validation: giving local-mean k-NN a weight of 1.0, 0.9, 0.8 and 0.7 produced 59.07%, 60.58%, 61.78% and 62.60% accuracy.
 
 For sentiment, the three-seed MLP ensemble achieved the highest reported accuracy at 68.3%, while the best Fisher-based Random Forest reached 67.1%. The final submission used a 70% local-mean k-NN and 30% MLP blend for images and the three-seed MLP ensemble for sentiment. We refit the selected models on all labeled examples before predicting the test labels. The combined validation estimate was about 65.4%, and the public Kaggle score was 65.3%.
 
